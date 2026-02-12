@@ -1,30 +1,50 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
+import Header from "./components/Header";
+import { AuthContext } from "./context/AuthContext";
 
 function App() {
   const [username, setUsername] = useState("emilys");
   const [password, setPassword] = useState("emilyspass");
-  const [token, setToken] = useState(null);
-  const [user, setUser] = useState(null);
+  const { user, setUser, setToken } = useContext(AuthContext);
+
+  const refreshNewToken = useCallback(async () => {
+    console.log("refreshNewToken =>>");
+    try {
+      const res = await axios.post(
+        "https://dummyjson.com/auth/refresh",
+        {},
+        // { withCredentials: true },
+      );
+
+      const newAccessToken = res.data.accessToken;
+
+      setToken(newAccessToken);
+
+      return newAccessToken;
+    } catch (error) {
+      console.log(error);
+    }
+  }, [setToken]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
       // 1. Login & Get JWT
-      const response = await axios.post("https://dummyjson.com/auth/login", {
-        username,
-        password,
-        expiresInMins: 30,
-      });
-
+      const response = await axios.post(
+        "https://dummyjson.com/auth/login",
+        {
+          username,
+          password,
+          expiresInMins: 30,
+        },
+        // { withCredentials: true },
+      );
       const accessToken = response.data.accessToken;
       setToken(accessToken);
 
-      // 2. Save Token in LocalStorage
-      localStorage.setItem("token", accessToken);
-
-      // 3. Get User Based on JWT
+      // 2. Get User Based on JWT
       const userResponse = await axios.get("https://dummyjson.com/auth/me", {
         headers: {
           Authorization: `Bearer ${accessToken}`, // Pass JWT via Authorization header
@@ -32,21 +52,36 @@ function App() {
       });
       setUser(userResponse.data);
     } catch (error) {
+      if (error.message.status === 401) {
+        const newtoken = await refreshNewToken();
+        try {
+          const response = await axios.post(
+            "https://dummyjson.com/post",
+            {
+              title,
+              body,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${newtoken}`, // Pass JWT via Authorization header
+              },
+            },
+          );
+        } catch (error) {
+          console.log(error);
+        }
+      }
       console.log(error);
     }
   };
-
   useEffect(() => {
     const restoreSession = async () => {
-      const savedToken = localStorage.getItem("token");
-      if (!savedToken) return;
-
-      setToken(savedToken);
+      const newToken = await refreshNewToken();
 
       try {
         const userResponse = await axios.get("https://dummyjson.com/auth/me", {
           headers: {
-            Authorization: `Bearer ${savedToken}`, // Pass JWT via Authorization header
+            Authorization: `Bearer ${newToken}`, // Pass JWT via Authorization header
           },
         });
         setUser(userResponse.data);
@@ -55,13 +90,19 @@ function App() {
       }
     };
     restoreSession();
-  }, []);
+  }, [setUser, refreshNewToken]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    await axios.post(
+      "https://dummyjson.com/auth/logout",
+      {},
+      // { withCredentials: true },
+    );
     setToken(null);
     setUser(null);
   };
+
+  const isShown = true;
 
   return (
     <>
@@ -70,31 +111,7 @@ function App() {
           <img src="/assets/gif/loading.gif" alt="loading" width={50} />
         </div>
       )} */}
-      <header className="border mb-10 min-h-[60px] px-24 flex items-center justify-between">
-        <a className="/">Logo</a>
-        {token && !user ? (
-          <img src="/assets/gif/loading.gif" alt="loading" width={25} />
-        ) : user ? (
-          <div className="flex items-center gap-x-2">
-            <img
-              src="/assets/icons/profile-icon.svg"
-              alt={"profile"}
-              width={25}
-            />
-            <h3>{user.firstName}</h3>
-            <button
-              className="bg-blue-500 rounded-sm px-3 py-2 text-white cursor-pointer"
-              onClick={handleLogout}
-            >
-              Log Out
-            </button>
-          </div>
-        ) : (
-          <button className="bg-blue-500 rounded-sm px-3 py-2 text-white cursor-pointer">
-            Log In
-          </button>
-        )}
-      </header>
+      {isShown && <Header />}
       <form onSubmit={handleSubmit}>
         <input
           type="username"
