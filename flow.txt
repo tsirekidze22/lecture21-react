@@ -1,17 +1,1 @@
-User logs in
-   ⬇️
-Server returns JWT -  JSON WEB TOKEN
-   ⬇️
-Frontend stores JWT
-   ⬇️
-Frontend requests /auth/me
-   ⬇️
-Server verifies JWT
-   ⬇️
-Server returns user
-   ⬇️
-App is authenticated
-
-
-HTTP is stateless
-
+npm install -D @testing-library/react @testing-library/user-event jsdom

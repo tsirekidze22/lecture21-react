@@ -1,3 +1,4 @@
+import Counter from "./components/Counter/Counter";
 import Header from "./components/Header";
 import ProductsList from "./components/ProductsList";
 
@@ -11,6 +12,7 @@ const ProductsArray = [
 function App() {
   return (
     <>
+      <Counter />
       <Header />
       <ProductsList products={ProductsArray} />
     </>
